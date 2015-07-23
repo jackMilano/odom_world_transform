@@ -57,7 +57,6 @@ private:
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "odom_world_transform_node");
-
   ros::NodeHandle nh("~");
 
   double rate, calib_vel_x, calib_vel_y, calib_duration;
@@ -88,7 +87,7 @@ int main(int argc, char **argv)
 }
 
 OdomWorldTransformEstimator::OdomWorldTransformEstimator(double rate_hz, const std::string &robot_base_frame)
-: rate_(rate_hz), yaw_offset_calibrated_(false), yaw_offset_(0.0), base_frame_(robot_base_frame),
+  : rate_(rate_hz), yaw_offset_calibrated_(false), yaw_offset_(0.0), base_frame_(robot_base_frame),
   pose_sub_(nh_, "robot_pose", 1), odom_sub_(nh_, "odom", 1), pose_odom_sub_(SyncPolicy(SYNC_POLICY_WINDOW_SIZE))
 {
   pose_odom_sub_.connectInput(pose_sub_, odom_sub_);
@@ -119,7 +118,6 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3 &velocity
   //register calibration callback
   message_filters::Connection conn = pose_odom_sub_.registerCallback(
       boost::bind(&OdomWorldTransformEstimator::yawOffsetCalibCallback, this, _1, _2));
-
   ros::Publisher cmd_vel_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 
   //wait for initial pose
@@ -173,7 +171,6 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3 &velocity
   {
     ROS_ERROR("Not enough samples for calibration. Try providing a faster calibration velocity, a longer duration or a smaller minimum number of samples. Aborting.");
   }
-
   return false;
 }
 
@@ -225,7 +222,7 @@ void OdomWorldTransformEstimator::estimateTransformCallback(
   }
 
   tf::Transform transform(tf::Quaternion(odom_to_world.getRotation()),
-                             tf::Point(odom_to_world.getOrigin()));
+      tf::Point(odom_to_world.getOrigin()));
 
   //TODO publish future stamped??
   //inverse to obtain pose of odom wrt world (world to odom transform)
