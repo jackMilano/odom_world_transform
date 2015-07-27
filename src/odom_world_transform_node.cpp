@@ -140,6 +140,7 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3 &velocity
 
   //cut head and tail of poses vector (consider only the part where the robot was moving)
   //TODO use odom to decide where to cut more precisely?? (e.g. only the section with constant linear velocity)
+  ROS_DEBUG("'poses_.size()' = %d.", (int) poses_.size());
   int toCut = (int) round(poses_.size() * 0.25);
   std::vector<projected_game_msgs::Pose2DStampedConstPtr>::iterator it = poses_.begin();
   it += toCut;
