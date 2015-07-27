@@ -169,7 +169,8 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3 &velocity
   }
   else
   {
-    ROS_ERROR("Not enough samples for calibration. Try providing a faster calibration velocity, a longer duration or a smaller minimum number of samples. Aborting.");
+    ROS_ERROR("Not enough samples for calibration. We have %d samples.", (int) poses_.size());
+    ROS_ERROR("Try providing a faster calibration velocity, a longer duration or a smaller minimum number of samples. Aborting.");
   }
   return false;
 }
