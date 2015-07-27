@@ -118,6 +118,7 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3 &velocity
   //register calibration callback
   message_filters::Connection conn = pose_odom_sub_.registerCallback(
       boost::bind(&OdomWorldTransformEstimator::yawOffsetCalibCallback, this, _1, _2));
+
   ros::Publisher cmd_vel_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 
   //wait for initial pose
@@ -166,13 +167,15 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3 &velocity
 
     //we can delete these
     poses_.clear();
+
     return true;
   }
   else
   {
-    ROS_ERROR("Not enough samples for calibration. We have %d samples.", (int) poses_.size());
+    ROS_ERROR("Not enough samples for calibration. We have %d samples. 'min_samples' = %d.", (int) poses_.size(), min_samples);
     ROS_ERROR("Try providing a faster calibration velocity, a longer duration or a smaller minimum number of samples. Aborting.");
   }
+
   return false;
 }
 
@@ -193,7 +196,8 @@ void OdomWorldTransformEstimator::spin()
   }
 }
 
-void OdomWorldTransformEstimator::yawOffsetCalibCallback(const projected_game_msgs::Pose2DStampedConstPtr& pose,
+void OdomWorldTransformEstimator::yawOffsetCalibCallback(
+    const projected_game_msgs::Pose2DStampedConstPtr& pose,
     const nav_msgs::OdometryConstPtr& odom)
 {
   poses_.push_back(pose);
