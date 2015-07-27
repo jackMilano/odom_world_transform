@@ -7,6 +7,7 @@
   <arg name="robot_base_frame" default="base_link"/>
 
   <node name="odom_world_transform_publisher" pkg="odom_world_transform" type="odom_world_transform_node" output="screen">
+    <remap from="robot_pose" to="robot_2d_pose"/>
     <param name="rate" value="$(arg rate)"/>
     <param name="calibration_velocity_x" value="$(arg calibration_velocity_x)"/>
     <param name="calibration_velocity_y" value="$(arg calibration_velocity_y)"/>
