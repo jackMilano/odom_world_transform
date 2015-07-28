@@ -28,7 +28,7 @@ class OdomWorldTransformEstimator
 {
   typedef message_filters::sync_policies::ApproximateTime<projected_game_msgs::Pose2DStamped, nav_msgs::Odometry> SyncPolicy;
 
-public:
+  public:
   OdomWorldTransformEstimator(double rate_hz, const std::string & robot_base_frame);
 
   bool isYawOffsetCalibrated() const;
@@ -36,7 +36,7 @@ public:
   bool calibrateYawOffset(const tf::Vector3 &velocity, double time_secs, int min_samples);
   void spin();
 
-private:
+  private:
   void yawOffsetCalibCallback(const projected_game_msgs::Pose2DStampedConstPtr& pose, const nav_msgs::OdometryConstPtr& odom);
   void estimateTransformCallback(const projected_game_msgs::Pose2DStampedConstPtr& pose, const nav_msgs::OdometryConstPtr& odom);
   tf::Vector3 findFittingVector(const std::vector<projected_game_msgs::Pose2DStampedConstPtr> &poses);
@@ -200,6 +200,7 @@ void OdomWorldTransformEstimator::yawOffsetCalibCallback(
     const projected_game_msgs::Pose2DStampedConstPtr& pose,
     const nav_msgs::OdometryConstPtr& odom)
 {
+  ROS_DEBUG("Sono nella 'yawOffsetCalibCallback' callback.");
   poses_.push_back(pose);
 }
 
