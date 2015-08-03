@@ -5,6 +5,7 @@
   <arg name="calibration_duration" default="2" />
   <arg name="calibration_min_samples" default="5"/>
   <arg name="robot_base_frame" default="base_link"/>
+  <arg name="min_speed_for_transform_update" default="0.2"/>
 
   <node name="odom_world_transform_publisher" pkg="odom_world_transform" type="odom_world_transform_node" output="screen">
     <remap from="robot_pose" to="robot_2d_pose"/>
@@ -14,6 +15,7 @@
     <param name="calibration_duration" value="$(arg calibration_duration)"/>
     <param name="calibration_min_samples" value="$(arg calibration_min_samples)"/>
     <param name="robot_base_frame" value="$(arg robot_base_frame)"/>
+    <param name="min_speed_for_transform_update" value="$(arg min_speed_for_transform_update)"/>
   </node>
 
 </launch>
