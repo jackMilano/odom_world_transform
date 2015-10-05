@@ -228,13 +228,13 @@ void OdomWorldTransformEstimator::estimateTransformCallback(
     return;
   }
 
-  tf::Transform transform(tf::Quaternion(odom_to_world.getRotation()),
-      tf::Point(odom_to_world.getOrigin()));
+  tf::Transform transform(tf::Quaternion(odom_to_world.getRotation()), tf::Point(odom_to_world.getOrigin()));
 
   //TODO publish future stamped??
   //inverse to obtain pose of odom wrt world (world to odom transform)
-  transform_bc_.sendTransform(tf::StampedTransform(transform.inverse(), pose->header.stamp, pose->header.frame_id,
-        odom->header.frame_id));
+  transform_bc_.sendTransform(tf::StampedTransform(transform.inverse(), pose->header.stamp, pose->header.frame_id, odom->header.frame_id));
+
+  return;
 }
 
 // regression
