@@ -94,8 +94,10 @@ int main(int argc, char** argv)
 OdomWorldTransformEstimator::OdomWorldTransformEstimator(double rate_hz, const std::string& robot_base_frame)
   : rate_(rate_hz), yaw_offset_calibrated_(false), yaw_offset_(0.0), base_frame_(robot_base_frame),
     pose_sub_(nh_, "robot_pose", 1), odom_sub_(nh_, "odom", 1), pose_odom_sub_(SyncPolicy(SYNC_POLICY_WINDOW_SIZE)),
-    old_transform_set(false)
+    old_transform_set(false),
+    old_transform() // per i tipi di dato non POD viene automaticamente chiamato il costruttore di default, se l'oggetto non e' nell'initializer list
 {
+  //old_transform =
   pose_odom_sub_.connectInput(pose_sub_, odom_sub_);
 }
 
@@ -196,7 +198,8 @@ void OdomWorldTransformEstimator::spin()
     {
       if(old_transform_set)
       {
-        tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), ros::Time(0), "world", "odom");
+        //tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), ros::Time(0), "world", "odom");
+        tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), ros::Time::now(), "world", "odom");
         transform_bc_.sendTransform(stamped_trans);
       }
 
@@ -235,6 +238,21 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
 
   try
   {
+    // Prima di eseguire le trasformazioni aspettiamo che esista una trasformata tra odom e
+    // base link (il tempo passato e' quello che vogliamo per la trasformata).
+    if(!tf_listener_.waitForTransform("odom", "base_link", odom->header.stamp, ros::Duration(5.0f)))
+    {
+      ROS_ERROR("odom_world_transform: wait for transform timed out!!");
+
+      if(old_transform_set)
+      {
+        tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), pose->header.stamp, "world", "odom");
+        transform_bc_.sendTransform(stamped_trans);
+      }
+
+      return;
+    }
+
     // pose of base_footprint wrt world
     tf::Transform base_to_world(tf::createQuaternionFromYaw(yaw_offset_), tf::Vector3(pose->pose.pose.position.x,
                                 pose->pose.pose.position.y, 0.0));
@@ -265,6 +283,7 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
   //TODO: publish future stamped??
   // inverse to obtain pose of odom wrt world (world to odom transform)
   tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), pose->header.stamp, "world", "odom");
+
   transform_bc_.sendTransform(stamped_trans);
 
   return;
