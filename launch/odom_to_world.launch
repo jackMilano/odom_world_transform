@@ -1,20 +1,20 @@
 <launch>
   <arg name="rate" default="60"/>
-  <!--<arg name="calibration_velocity_x" default="60"/> [> Il valore massimo è 255. <]-->
-  <!--<arg name="calibration_velocity_y" default="0"/>-->
-  <!--<arg name="calibration_duration" default="2" />-->
-  <!--<arg name="calibration_min_samples" default="5"/>-->
+  <arg name="calibration_velocity_x" default="60"/> <!-- Il valore massimo è 255. -->
+  <arg name="calibration_velocity_y" default="0"/>
+  <arg name="calibration_duration" default="2" />
+  <arg name="calibration_min_samples" default="5"/>
   <arg name="robot_base_frame" default="base_link"/>
 
   <node name="odom_world_transform_publisher" pkg="odom_world_transform" type="odom_world_transform_node" output="screen">
-    <!--<remap from="robot_pose" to="robot_2d_pose"/>-->
     <!--<remap from="robot_pose" to="robot_2d_geometry_pose"/>-->
+    <!--<remap from="robot_pose" to="robot_2d_pose"/>-->
     <remap from="robot_pose" to="robot_pose_rviz"/>
     <param name="rate" value="$(arg rate)"/>
-    <!--<param name="calibration_velocity_x" value="$(arg calibration_velocity_x)"/>-->
-    <!--<param name="calibration_velocity_y" value="$(arg calibration_velocity_y)"/>-->
-    <!--<param name="calibration_duration" value="$(arg calibration_duration)"/>-->
-    <!--<param name="calibration_min_samples" value="$(arg calibration_min_samples)"/>-->
+    <param name="calibration_velocity_x" value="$(arg calibration_velocity_x)"/>
+    <param name="calibration_velocity_y" value="$(arg calibration_velocity_y)"/>
+    <param name="calibration_duration" value="$(arg calibration_duration)"/>
+    <param name="calibration_min_samples" value="$(arg calibration_min_samples)"/>
     <param name="robot_base_frame" value="$(arg robot_base_frame)"/>
   </node>
 
