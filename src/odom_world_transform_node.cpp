@@ -1,6 +1,9 @@
 // Il nodo crea ed aggiorna la trasformata tra 'world' e 'odom'.
-
-// TODO: risolvere il problema di estrapolazione nel futuro.
+// - non si tiene conto dell'orientamento
+// - la trasformata viene aggiornata ogni volta che e' possibile, nei tempi morti in cui non si entra nella callback
+//   viene pubblicata l'ultima calcolata, con lo stamp aggiornato, in modo da non fermare mai la pubblicazione della
+//   trasformata, anche se a causa di falsi positivi o confidenza bassa o lost tracking il nodo 'bb_to_world' smette
+//   di pubblicare messaggi
 
 // Libraries
 // ROS library
