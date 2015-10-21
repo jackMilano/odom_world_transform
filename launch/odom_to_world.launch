@@ -1,5 +1,5 @@
 <launch>
-  <arg name="rate" default="50"/>
+  <arg name="rate" default="60"/>
   <arg name="calibration_velocity_x" default="60"/> <!-- Il valore massimo è 255. -->
   <arg name="calibration_velocity_y" default="0"/>
   <arg name="calibration_duration" default="2" />
