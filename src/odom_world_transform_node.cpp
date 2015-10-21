@@ -1,6 +1,6 @@
-// Il nodo crea ed aggiorna la trasformata tra 'world' e 'odom'.
-
-// TODO: risolvere il problema di estrapolazione nel futuro.
+/// Il nodo crea ed aggiorna la trasformata tra 'world' e 'odom'.
+// - non si tiene conto dell'orientamento
+// - la trasformata viene calcolata solamente all'inizio, e poi costantemente pubblicata
 
 // Libraries
 // ROS library
@@ -55,6 +55,7 @@ private:
   tf::Transform old_transform;
 };
 
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "odom_world_transform_node");
@@ -100,20 +101,32 @@ void OdomWorldTransformEstimator::spin()
 {
   ROS_DEBUG("Nello 'spin'.");
 
-  pose_odom_sub_.registerCallback(&OdomWorldTransformEstimator::estimateTransformCallback, this);
+  message_filters::Connection conn = pose_odom_sub_.registerCallback(
+                                       &OdomWorldTransformEstimator::estimateTransformCallback, this);
+  //// facciamo girare la trasformata un po, per assicurarci che la trasformata calcolata sia valida
+  //ros::Time start_time = ros::Time::now();
+
+  // facciamo girare una volta la callback per ottenere la trasformata, poi la disconnettiamo immediatamente
+  while(!old_transform_set)
+  {
+    ros::spinOnce();
+    rate_.sleep();
+  }
+
+  conn.disconnect();
 
   while(nh_.ok())
   {
     // In questo modo anche se non riceviamo dati continuiamo a pubblicare una trasformata (l'ultima calcolata).
-    if(old_transform_set)
-    {
-      tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), ros::Time::now(), "world", "odom");
-      transform_bc_.sendTransform(stamped_trans);
-    }
+    //if(old_transform_set)
+    //{
+    tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), ros::Time::now(), "world", "odom");
+    transform_bc_.sendTransform(stamped_trans);
+    //}
 
     // 'spinOnce': will call all the callbacks waiting to be called at that point in time.
     // 'spinOnce': non dovrebbe essere bloccante.
-    ros::spinOnce();
+    //ros::spinOnce();
     rate_.sleep();
   }
 
@@ -136,16 +149,13 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
   //return;
   //}
 
-  //TODO: online estimation of yaw offset here
-
-  tf::Stamped<tf::Pose> odom_to_world;
-
   // pose of base_footprint wrt world
   tf::Transform base_to_world(tf::createQuaternionFromYaw(0.0), tf::Vector3(pose->pose.position.x, pose->pose.position.y,
                               0.0));
-
   // pose of world wrt base_footprint
   tf::Stamped<tf::Pose> world_to_base_stamped(base_to_world.inverse(), pose->header.stamp, base_frame_);
+
+  tf::Stamped<tf::Pose> odom_to_world;
 
   try
   {
@@ -155,7 +165,6 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
     if(!tf_listener_.waitForTransform("odom", "base_link", pose->header.stamp, ros::Duration(3.0f)))
     {
       ROS_ERROR("odom_world_transform: wait for transform timed out!!");
-
       return;
     }
 
@@ -177,13 +186,14 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
 
   // salvataggio dati vecchi
   old_transform = transform;
-  old_transform_set = true;
 
   //TODO: publish future stamped??
   // inverse to obtain pose of odom wrt world (world to odom transform)
   tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), pose->header.stamp, "world", "odom");
 
   transform_bc_.sendTransform(stamped_trans);
+
+  old_transform_set = true;
 
   return;
 }
