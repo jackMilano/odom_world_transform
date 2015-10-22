@@ -24,15 +24,14 @@
 
 #include <boost/bind.hpp>
 
-#define MAX_WAIT_TIME (3) // secondi di attesa
+#define MAX_WAIT_TIME 3 // secondi di attesa
 #define RAD2DEG (180.0 / 3.14159265359)
 #define SYNC_POLICY_WINDOW_SIZE 15
 
 
 class OdomWorldTransformEstimator
 {
-  // Ho abbandonato 'ApproximateTime' per cercare di risolvere il problema del 'lookup would require extrapolation into
-  // the future', ma se si usa 'ExactTime' non si entra mai nella callback.
+  // Utilizzando 'ExactTime' non si entra mai nella callback.
   typedef message_filters::sync_policies::ApproximateTime<geometry_msgs::PoseStamped, nav_msgs::Odometry>
   SyncPolicy;
 
@@ -64,7 +63,6 @@ private:
   const ros::Duration WAIT_BEFORE_STATIC_PUB;
   bool yaw_offset_calibrated_;
   double yaw_offset_;
-  bool old_transform_set;
 };
 
 
@@ -115,8 +113,7 @@ OdomWorldTransformEstimator::OdomWorldTransformEstimator(double rate_hz, const s
   old_transform(),
   WAIT_BEFORE_STATIC_PUB(MAX_WAIT_TIME),
   yaw_offset_calibrated_(false),
-  yaw_offset_(0.0),
-  old_transform_set(false)
+  yaw_offset_(0.0)//,
 {
   pose_odom_sub_.connectInput(pose_sub_, odom_sub_);
 }
@@ -143,14 +140,14 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3& velocity
   tf::vector3TFToMsg(velocity, twist.linear);
   ros::Duration duration(time_secs);
 
-  //register calibration callback
+  // register calibration callback
   message_filters::Connection conn = pose_odom_sub_.registerCallback(boost::bind(
                                        &OdomWorldTransformEstimator::yawOffsetCalibCallback, this, _1, _2));
 
   ros::Publisher cmd_vel_pub = nh_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
 
-  //wait for initial pose
-  //start moving the robot
+  // wait for initial pose
+  // start moving the robot
   ros::Time finish(ros::Time::now() + duration);
 
   while(ros::Time::now() < finish)
@@ -160,15 +157,15 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3& velocity
     rate_.sleep();
   }
 
-  //stop the robot
+  // stop the robot
   geometry_msgs::Twist zeroTwist;
   cmd_vel_pub.publish(zeroTwist);
   ros::spinOnce();
 
-  //disconnect calibration callback
+  // disconnect calibration callback
   conn.disconnect();
 
-  //cut head and tail of poses vector (consider only the part where the robot was moving)
+  // cut head and tail of poses vector (consider only the part where the robot was moving)
   //TODO: use odom to decide where to cut more precisely?? (e.g. only the section with constant linear velocity)
   ROS_DEBUG("'poses_.size()' = %d.", (int) poses_.size());
   int toCut = (int) round(poses_.size() * 0.25);
@@ -179,34 +176,33 @@ bool OdomWorldTransformEstimator::calibrateYawOffset(const tf::Vector3& velocity
   it += poses_.size() - toCut;
   poses_.erase(it, poses_.end());
 
-  //check enough samples were collected
+  // check enough samples were collected
   if(poses_.size() >= min_samples)
   {
-    //calculate displacement vector
+    // calculate displacement vector
     tf::Vector3 actual_displacement = findFittingVector(poses_);
 
     //TODO: can I use odom info?? should I??
-    //maybe use odom instead of velocity for expected displacement?
+    // maybe use odom instead of velocity for expected displacement?
 
-    //calculate angle b/w displacement vectors
-    //angle of 2 relative to 1: atan2(v2.y,v2.x) - atan2(v1.y,v1.x)
-    //offset = angle of actual relative to expected
+    // calculate angle b/w displacement vectors
+    // angle of 2 relative to 1: atan2(v2.y,v2.x) - atan2(v1.y,v1.x)
+    // offset = angle of actual relative to expected
     yaw_offset_ = atan2(actual_displacement.y(), actual_displacement.x()) - atan2(velocity.y(), velocity.x());
     yaw_offset_calibrated_ = true;
 
     //we can delete these
     poses_.clear();
 
-    //return true;
   }
   else
   {
-    ROS_ERROR("Not enough samples for calibration. We have %d samples. 'min_samples' = %d.", (int) poses_.size(),
-              min_samples);
-    ROS_ERROR("Try providing a faster calibration velocity, a longer duration or a smaller minimum number of samples. Aborting.");
+    ROS_ERROR("Not enough samples for calibration.");
+    ROS_ERROR("We have %d samples. 'min_samples' = %d.", (int) poses_.size(), min_samples);
+    ROS_ERROR("Try providing a faster calibration velocity, a longer duration or a smaller minimum number of samples.");
+    ROS_ERROR("Aborting.");
   }
 
-  //return false;
   return yaw_offset_calibrated_;
 }
 
@@ -216,37 +212,35 @@ void OdomWorldTransformEstimator::spin()
 
   if(yaw_offset_calibrated_)
   {
-    pose_odom_sub_.registerCallback(&OdomWorldTransformEstimator::estimateTransformCallback, this);
-    //message_filters::Connection conn = pose_odom_sub_.registerCallback(&OdomWorldTransformEstimator::estimateTransformCallback, this);
+    //pose_odom_sub_.registerCallback(&OdomWorldTransformEstimator::estimateTransformCallback, this);
+    message_filters::Connection conn = pose_odom_sub_.registerCallback(
+                                         &OdomWorldTransformEstimator::estimateTransformCallback, this);
 
-    //ROS_INFO("Attendiamo %.2f secondi prima di pubblicare la trasformata statica!", WAIT_BEFORE_STATIC_PUB.toSec());
+    ROS_INFO("Attendiamo %.2f secondi prima di pubblicare la trasformata statica!", WAIT_BEFORE_STATIC_PUB.toSec());
 
-    //// Per i primi 'WAIT_BEFORE_STATIC_PUB' continuiamo a produrre dinamicamente trasformate, poi la salviamo.
-    //const ros::Time start_time = ros::Time::now();
-    //ros::Duration duration(0.0);
+    // Per i primi 'WAIT_BEFORE_STATIC_PUB' continuiamo a produrre dinamicamente trasformate, poi la salviamo.
+    const ros::Time start_time = ros::Time::now();
+    ros::Duration duration(0.0);
 
-    //while(duration < WAIT_BEFORE_STATIC_PUB)
-    //{
-    //// 'spinOnce': will call all the callbacks waiting to be called at that point in time; it's not blocking.
-    //ros::spinOnce();
-    //rate_.sleep();
-    //duration = ros::Time::now() - start_time;
-    //}
+    while(duration < WAIT_BEFORE_STATIC_PUB)
+    {
+      // 'spinOnce': will call all the callbacks waiting to be called at that point in time; it's not blocking.
+      ros::spinOnce();
+      rate_.sleep();
+      duration = ros::Time::now() - start_time;
+    }
 
-    ////conn.disconnect();
+    conn.disconnect();
 
-    //ROS_INFO("Sono passati %.2f secondi! Ora pubblichiamo la trasformata statica!", WAIT_BEFORE_STATIC_PUB.toSec());
+    ROS_INFO("Sono passati %.2f secondi! Ora pubblichiamo la trasformata statica!", WAIT_BEFORE_STATIC_PUB.toSec());
 
     while(nh_.ok())
     {
       // In questo modo quando 'bb_to_world' non pubblica i messaggi di posa (a causa di falsi positivi o lost tracking
       // o bassa confidenza, si continua pero' a pubblicare l'ultima trasformata valida).
       // - sul lungo periodo le posizioni pero' divergono
-      if(old_transform_set)
-      {
-        tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), ros::Time::now(), "world", "odom");
-        transform_bc_.sendTransform(stamped_trans);
-      }
+      tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), ros::Time::now(), "world", "odom");
+      transform_bc_.sendTransform(stamped_trans);
 
       // 'spinOnce': will call all the callbacks waiting to be called at that point in time; it's not blocking.
       ros::spinOnce();
@@ -260,7 +254,7 @@ void OdomWorldTransformEstimator::spin()
 void OdomWorldTransformEstimator::yawOffsetCalibCallback(const geometry_msgs::PoseStampedConstPtr& pose,
     const nav_msgs::OdometryConstPtr& odom)
 {
-  ROS_DEBUG("Sono nella 'yawOffsetCalibCallback' callback.");
+  //ROS_DEBUG("Sono nella 'yawOffsetCalibCallback' callback.");
   poses_.push_back(pose);
 
   return;
@@ -274,26 +268,29 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
 
   ROS_DEBUG("Sono nella 'estimateTransformCallback'.");
 
-  // pose of base_footprint wrt world
+  // pose of base_footprint wrt world (world --> base_footprint transform)
   tf::Transform base_to_world(tf::createQuaternionFromYaw(yaw_offset_), tf::Vector3(pose->pose.position.x,
                               pose->pose.position.y, 0.0));
-  // pose of world wrt base_footprint
+
+  // pose of world wrt base_footprint (base_footprint --> world transform)
   tf::Stamped<tf::Pose> world_to_base_stamped(base_to_world.inverse(), pose->header.stamp, base_frame_);
+  ROS_DEBUG("world_to_base_stamped header = %s.", world_to_base_stamped.frame_id_.c_str());
 
   tf::Stamped<tf::Pose> odom_to_world;
 
   try
   {
-    // Prima di eseguire le trasformazioni aspettiamo che esista una trasformata tra odom e
-    // base link (il tempo passato e' quello che vogliamo per la trasformata).
+    // Prima di eseguire la trasformazione aspettiamo che esista la transform 'odom --> base link'
+    // al tempo desiderato
     if(!tf_listener_.waitForTransform("odom", "base_link", pose->header.stamp, ros::Duration(3.0f)))
     {
       ROS_ERROR("odom_world_transform: wait for transform timed out!!");
       return;
     }
 
-    // pose of world wrt odom
+    // pose of world wrt odom (odom --> world transform)
     tf_listener_.transformPose(odom->header.frame_id, world_to_base_stamped, odom_to_world);
+    ROS_DEBUG("odom_to_world header = %s.", odom_to_world.frame_id_.c_str());
   }
   catch(const tf::TransformException& tf_ex)
   {
@@ -308,12 +305,11 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
 
   tf::Transform transform(tf::Quaternion(odom_to_world.getRotation()), tf::Point(odom_to_world.getOrigin()));
 
-  // salvataggio dati vecchi
+  // salvataggio trasformata
   old_transform = transform;
-  old_transform_set = true;
 
   //TODO: publish future stamped??
-  // inverse to obtain pose of odom wrt world (world to odom transform)
+  // inverse to obtain pose of odom wrt world (world --> odom transform)
   tf::StampedTransform stamped_trans = tf::StampedTransform(old_transform.inverse(), pose->header.stamp, "world", "odom");
 
   transform_bc_.sendTransform(stamped_trans);
