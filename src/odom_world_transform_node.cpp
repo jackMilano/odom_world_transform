@@ -273,8 +273,8 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
                               pose->pose.position.y, 0.0));
 
   // pose of world wrt base_footprint (base_footprint --> world transform)
+  // - header = 'base_link'
   tf::Stamped<tf::Pose> world_to_base_stamped(base_to_world.inverse(), pose->header.stamp, base_frame_);
-  ROS_DEBUG("world_to_base_stamped header = %s.", world_to_base_stamped.frame_id_.c_str());
 
   tf::Stamped<tf::Pose> odom_to_world;
 
@@ -290,7 +290,6 @@ void OdomWorldTransformEstimator::estimateTransformCallback(const geometry_msgs:
 
     // pose of world wrt odom (odom --> world transform)
     tf_listener_.transformPose(odom->header.frame_id, world_to_base_stamped, odom_to_world);
-    ROS_DEBUG("odom_to_world header = %s.", odom_to_world.frame_id_.c_str());
   }
   catch(const tf::TransformException& tf_ex)
   {
