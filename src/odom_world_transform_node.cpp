@@ -228,7 +228,7 @@ void OdomWorldTransformEstimator::estimateTransformCallback(
     try
     {
       //pose of base_footprint wrt world
-      tf::Transform base_to_world(tf::createQuaternionFromYaw(yaw_offset_), tf::Vector3(pose->pose.x, pose->pose.y, 0.0));
+      tf::Transform base_to_world(tf::createQuaternionFromYaw(yaw_offset_ + tf::getYaw(odom->pose.pose.orientation)), tf::Vector3(pose->pose.x, pose->pose.y, 0.0));
       //pose of world wrt base_footprint
       tf::Stamped<tf::Pose> world_to_base_stamped(base_to_world.inverse(), pose->header.stamp, base_frame_);
       //pose of world wrt odom
